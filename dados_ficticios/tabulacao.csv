@@ -1,0 +1,14 @@
+﻿STATUS_1,STATUS_2,LOCALIZACAO,PRODUTIVO,CPC
+Venda,Venda realizada,SIM,SIM,SIM
+Venda,Cliente pediu orçamento,SIM,SIM,SIM
+Contato,Cliente solicitou retorno,SIM,SIM,SIM
+Contato,Dúvidas sobre instalação,SIM,SIM,SIM
+Contato,Cliente não quis conhecer,SIM,NAO,SIM
+Sem contato,Cliente não respondeu,NAO,NAO,NAO
+Sem contato,Cliente parou de responder,NAO,NAO,NAO
+Sem contato,Número inválido,NAO,NAO,NAO
+Suporte,Transferência para o SAC,SIM,NAO,SIM
+Suporte,Reclamação,SIM,SIM,SIM
+Contato,"Cliente solicitou retorno, Dúvidas sobre instalação",SIM,SIM,SIM
+Sem contato,"Cliente não respondeu, Cliente parou de responder",NAO,NAO,NAO
+Suporte,"Reclamação, Transferência para o SAC",SIM,SIM,SIM
