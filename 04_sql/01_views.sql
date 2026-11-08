@@ -18,13 +18,16 @@ CREATE OR ALTER VIEW dbo.vw_atendimentos_limpo AS
 WITH Numerada AS (
     SELECT
         id_atendimento,
-        COALESCE(TRY_CONVERT(DATETIME, data_hora, 120),   -- aaaa-mm-dd hh:mi:ss
-                 TRY_CONVERT(DATETIME, data_hora, 103))   -- dd/mm/aaaa hh:mi
-                                                AS data_hora,
+        CASE
+            WHEN data_hora LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]%'
+                THEN TRY_CONVERT(DATETIME, data_hora, 120)   -- aaaa-mm-dd hh:mi:ss
+            WHEN data_hora LIKE '[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9]%'
+                THEN TRY_CONVERT(DATETIME, data_hora, 103)   -- dd/mm/aaaa hh:mi
+        END AS data_hora,
         canal,
-        NULLIF(LTRIM(RTRIM(tags)), '')          AS tags,
+        NULLIF(LTRIM(RTRIM(tags)), '') AS tags,
         agente,
-        TRY_CONVERT(INT, duracao_seg)           AS duracao_seg,
+        TRY_CONVERT(INT, duracao_seg) AS duracao_seg,
         ROW_NUMBER() OVER (PARTITION BY id_atendimento ORDER BY (SELECT NULL)) AS rn
     FROM dbo.stg_atendimentos
 )
@@ -196,4 +199,46 @@ FROM Calendario c
 CROSS JOIN Canais k
 LEFT JOIN Atend a                ON a.data = c.data AND a.canal = k.canal
 LEFT JOIN dbo.vw_fato_vendas v   ON v.data = c.data AND v.canal = k.canal;
+GO
+
+-- 7. Cancelamentos por motivo: dia x canal x motivo
+CREATE OR ALTER VIEW dbo.vw_cancelamentos AS
+WITH Ultimo_Item AS (
+    SELECT
+        numero_caso,
+        TRY_CONVERT(DATE, data_criacao, 23) AS data,
+        subcanal,
+        status,
+        motivo_cancelamento,
+        ROW_NUMBER() OVER (
+            PARTITION BY numero_caso
+            ORDER BY TRY_CONVERT(INT, numero_item) DESC
+        ) AS rn
+    FROM dbo.stg_vendas
+)
+SELECT
+    data,
+    CASE subcanal
+        WHEN N'WhatsApp_receptivo' THEN N'WHATSAPP RECEPTIVO'
+        WHEN N'WhatsApp_BOT'       THEN N'WHATSAPP RECEPTIVO'
+        WHEN N'WhatsApp_ativo'     THEN N'WHATSAPP ATIVO'
+        WHEN N'Voz_receptiva'      THEN N'RECEPTIVO VOZ'
+        WHEN N'Voz_ativa'          THEN N'ATIVO VOZ'
+        ELSE N'OUTROS'
+    END AS canal,
+    ISNULL(motivo_cancelamento, N'Não informado') AS motivo,
+    COUNT(*) AS cancelamentos
+FROM Ultimo_Item
+WHERE rn = 1 AND status = N'Cancelado'
+GROUP BY
+    data,
+    CASE subcanal
+        WHEN N'WhatsApp_receptivo' THEN N'WHATSAPP RECEPTIVO'
+        WHEN N'WhatsApp_BOT'       THEN N'WHATSAPP RECEPTIVO'
+        WHEN N'WhatsApp_ativo'     THEN N'WHATSAPP ATIVO'
+        WHEN N'Voz_receptiva'      THEN N'RECEPTIVO VOZ'
+        WHEN N'Voz_ativa'          THEN N'ATIVO VOZ'
+        ELSE N'OUTROS'
+    END,
+    ISNULL(motivo_cancelamento, N'Não informado');
 GO
